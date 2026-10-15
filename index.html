@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="description"
+        content="Comprima, converta e redimensione imagens online com o ImageLab."
+    >
+
+    <title>ImageLab | Editor de Imagens Online</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/app.js" defer></script>
+</head>
+<body>
+    <header class="cabecalho">
+        <a class="logo" href="./">ImageLab<span>.</span></a>
+
+        <nav aria-label="Navegação principal">
+            <a href="#ferramenta">Ferramenta</a>
+            <a href="#sobre">Sobre</a>
+        </nav>
+
+        <span class="selo-gratuito">Gratuito</span>
+    </header>
+
+    <main>
+        <section class="hero">
+            <p class="etiqueta">FERRAMENTAS DE IMAGEM ONLINE</p>
+
+            <h1>Suas imagens, do seu jeito.</h1>
+
+            <p class="descricao">
+                Comprima, converta e redimensione imagens
+                de forma simples e rápida.
+            </p>
+        </section>
+
+        <section class="ferramenta" id="ferramenta">
+            <div class="upload-area">
+                <div class="icone-upload" aria-hidden="true">↑</div>
+
+                <h2>Comece com uma imagem</h2>
+
+                <p>
+                    Selecione uma imagem do seu dispositivo
+                    para começar.
+                </p>
+
+                <button type="button" id="selecionar-imagem">
+                    Selecionar imagem
+                </button>
+
+                <input
+                    type="file"
+                    id="arquivo-imagem"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                >
+
+                <p class="formatos">
+                    Formatos iniciais: JPEG, PNG e WebP
+                </p>
+            </div>
+        </section>
+
+        <section class="sobre" id="sobre">
+            <h2>Simples. Prático. Direto ao ponto.</h2>
+
+            <p>
+                O ImageLab está sendo desenvolvido para
+                facilitar o trabalho com imagens, com
+                ferramentas acessíveis diretamente no navegador.
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        <p>ImageLab © 2026 — Ferramentas de imagem online.</p>
+    </footer>
+</body>
+</html>

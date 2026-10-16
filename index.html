@@ -67,6 +67,29 @@
             </div>
         </section>
 
+        <section class="ferramenta-lote" id="ferramenta-lote">
+            <h2>Redimensionamento em lote</h2>
+            <p>Redimensione até 10 imagens de uma vez. Os arquivos são processados no seu navegador.</p>
+
+            <label for="arquivos-lote">Selecionar imagens (JPEG, PNG ou WebP)</label>
+            <input type="file" id="arquivos-lote" accept="image/jpeg,image/png,image/webp" multiple>
+
+            <label for="largura-lote">Largura desejada (px)</label>
+            <input type="number" id="largura-lote" min="1" max="10000" value="1200">
+
+            <label for="altura-lote">Altura desejada (px)</label>
+            <input type="number" id="altura-lote" min="1" max="10000" value="800">
+
+            <label>
+                <input type="checkbox" id="proporcao-lote" checked>
+                Manter proporção de cada imagem
+            </label>
+
+            <button type="button" id="processar-lote">Redimensionar imagens</button>
+            <p id="estado-lote" aria-live="polite"></p>
+            <div id="resultados-lote"></div>
+        </section>
+
         <section class="sobre" id="sobre">
             <h2>Simples. Prático. Direto ao ponto.</h2>
 
@@ -81,5 +104,6 @@
     <footer>
         <p>ImageLab © 2026 — Ferramentas de imagem online.</p>
     </footer>
+    <script src="js/lote.js"></script>
 </body>
 </html>

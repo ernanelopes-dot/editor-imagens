@@ -159,7 +159,7 @@ function mostrarPrevia(imagem, arquivo) {
                 id="previa-imagem"
                 alt="Imagem em edição"
                 draggable="false"
-                style="display:block; max-width:100%; max-height:600px; width:auto; height:auto; user-select:none;"
+                style="display:block; margin:0; max-width:100%; max-height:600px; width:auto; height:auto; user-select:none;"
             >
             <div
                 id="selecao-corte"

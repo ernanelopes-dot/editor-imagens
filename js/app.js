@@ -1,4 +1,3 @@
-
 "use strict";
 
 // ===== ELEMENTOS PRINCIPAIS =====
@@ -18,7 +17,9 @@ const FORMATOS_PERMITIDOS = [
 ];
 
 let imagemAtual = null;
+let imagemTrabalho = null;
 let urlImagemAtual = null;
+let urlImagemTrabalho = null;
 let urlResultadoAtual = null;
 let urlRedimensionadaAtual = null;
 let urlCortadaAtual = null;
@@ -99,6 +100,10 @@ function carregarImagem(arquivo) {
             return;
         }
 
+        if (urlImagemTrabalho && urlImagemTrabalho !== urlImagemAtual) {
+            URL.revokeObjectURL(urlImagemTrabalho);
+        }
+
         if (urlImagemAtual) {
             URL.revokeObjectURL(urlImagemAtual);
         }
@@ -106,7 +111,9 @@ function carregarImagem(arquivo) {
         liberarResultadoAnterior();
 
         imagemAtual = arquivo;
+        imagemTrabalho = imagem;
         urlImagemAtual = novaUrl;
+        urlImagemTrabalho = novaUrl;
 
         mostrarPrevia(imagem, arquivo);
     };
@@ -122,210 +129,344 @@ function carregarImagem(arquivo) {
 
 // ===== PRÉ-VISUALIZAÇÃO E CONTROLES =====
 
+
 function mostrarPrevia(imagem, arquivo) {
-    const larguraOriginal = imagem.naturalWidth;
-    const alturaOriginal = imagem.naturalHeight;
+    const imagemBase = imagemTrabalho || imagem;
+    const larguraOriginal = imagemBase.naturalWidth;
+    const alturaOriginal = imagemBase.naturalHeight;
 
     areaUpload.innerHTML = `
-        <h2>Imagem selecionada</h2>
+        <h2>Área de trabalho</h2>
 
-        <img
-            id="previa-imagem"
-            alt="Pré-visualização da imagem selecionada"
+        <div
+            id="area-trabalho-imagem"
+            style="position:relative; display:inline-block; max-width:100%; line-height:0; touch-action:none;"
         >
+            <img
+                id="previa-imagem"
+                alt="Imagem em edição"
+                draggable="false"
+                style="display:block; max-width:100%; max-height:600px; width:auto; height:auto; user-select:none;"
+            >
+            <div
+                id="selecao-corte"
+                style="position:absolute; display:none; border:2px solid #176b50; background:rgba(23,107,80,0.20); box-sizing:border-box; pointer-events:none;"
+            ></div>
+        </div>
 
         <div class="informacoes-imagem">
-            <p>
-                <strong>Arquivo:</strong>
-                <span id="nome-imagem"></span>
-            </p>
-
-            <p>
-                <strong>Tamanho original:</strong>
-                <span id="tamanho-imagem"></span>
-            </p>
-
-            <p>
-                <strong>Dimensões:</strong>
-                <span id="dimensoes-imagem"></span>
-            </p>
+            <p><strong>Arquivo:</strong> <span id="nome-imagem"></span></p>
+            <p><strong>Tamanho original:</strong> <span id="tamanho-imagem"></span></p>
+            <p><strong>Dimensões atuais:</strong> <span id="dimensoes-imagem"></span></p>
         </div>
 
-        <div class="controles-compressao">
-            <h3>Comprimir ou converter</h3>
-
-            <label for="qualidade-imagem">
-                Qualidade:
-                <strong id="valor-qualidade">80%</strong>
-            </label>
-
-            <input
-                type="range"
-                id="qualidade-imagem"
-                min="10"
-                max="100"
-                value="80"
-                step="5"
-            >
-
-            <label for="formato-saida">Formato de saída</label>
-
-            <select id="formato-saida">
-                <option value="image/webp">WebP</option>
-                <option value="image/jpeg">JPEG</option>
-                <option value="image/png">PNG</option>
-            </select>
-
-            <button type="button" id="processar-imagem">
-                Comprimir imagem
-            </button>
+        <div class="navegacao-ferramentas" role="group" aria-label="Ferramentas de imagem">
+            <button type="button" class="aba-ferramenta ativa" data-painel="painel-comprimir">Exportar</button>
+            <button type="button" class="aba-ferramenta" data-painel="painel-redimensionar">Redimensionar</button>
+            <button type="button" class="aba-ferramenta" data-painel="painel-cortar">Cortar</button>
+            <button type="button" class="aba-ferramenta" data-painel="painel-transformar">Girar e espelhar</button>
+            <button type="button" class="aba-ferramenta" data-painel="painel-filtros">Filtros</button>
+            <button type="button" class="aba-ferramenta" data-painel="painel-ajustes">Ajustes</button>
         </div>
 
-        <div id="resultado-compressao" aria-live="polite"></div>
-
-        <div class="controles-compressao">
-            <h3>Redimensionar imagem</h3>
-
-            <p>
-                Defina as novas dimensões em pixels.
-            </p>
-
-            <label for="largura-imagem">Largura (px)</label>
-
-            <input
-                type="number"
-                id="largura-imagem"
-                min="1"
-                max="${DIMENSAO_MAXIMA}"
-                step="1"
-                value="${larguraOriginal}"
-            >
-
-            <label for="altura-imagem">Altura (px)</label>
-
-            <input
-                type="number"
-                id="altura-imagem"
-                min="1"
-                max="${DIMENSAO_MAXIMA}"
-                step="1"
-                value="${alturaOriginal}"
-            >
-
-            <label>
-                <input
-                    type="checkbox"
-                    id="manter-proporcao"
-                    checked
-                >
-                Manter proporção original
-            </label>
-
-            <p id="aviso-dimensoes" aria-live="polite"></p>
-
-            <button type="button" id="redimensionar-imagem">
-                Redimensionar imagem
-            </button>
-        </div>
-
-        <div id="resultado-redimensionamento" aria-live="polite"></div>
-
-        
-        <div class="controles-compressao">
-            <h3>Cortar imagem</h3>
-
-            <p>
-                Arraste o mouse sobre a imagem para selecionar
-                a área que deseja manter.
-            </p>
-
-            <div id="area-corte">
-                <img
-                    id="imagem-corte"
-                    alt="Imagem para selecionar a área de corte"
-                    draggable="false"
-                >
-                <div id="selecao-corte"></div>
+        <section class="painel-ferramenta" id="painel-comprimir">
+            <div class="controles-compressao">
+                <h3>Exportar e comprimir</h3>
+                <label for="qualidade-imagem">Qualidade: <strong id="valor-qualidade">80%</strong></label>
+                <input type="range" id="qualidade-imagem" min="10" max="100" value="80" step="5">
+                <label for="formato-saida">Formato de saída</label>
+                <select id="formato-saida">
+                    <option value="image/webp">WebP</option>
+                    <option value="image/jpeg">JPEG</option>
+                    <option value="image/png">PNG</option>
+                </select>
+                <button type="button" id="processar-imagem">Gerar imagem final</button>
             </div>
+            <div id="resultado-compressao" aria-live="polite"></div>
+        </section>
 
-            <p id="dimensoes-corte" aria-live="polite">
-                Arraste para selecionar uma região.
-            </p>
+        <section class="painel-ferramenta" id="painel-redimensionar" hidden>
+            <div class="controles-compressao">
+                <h3>Redimensionar imagem</h3>
+                <label for="largura-imagem">Largura (px)</label>
+                <input type="number" id="largura-imagem" min="1" max="${DIMENSAO_MAXIMA}" step="1" value="${larguraOriginal}">
+                <label for="altura-imagem">Altura (px)</label>
+                <input type="number" id="altura-imagem" min="1" max="${DIMENSAO_MAXIMA}" step="1" value="${alturaOriginal}">
+                <label><input type="checkbox" id="manter-proporcao" checked> Manter proporção</label>
+                <p id="aviso-dimensoes" aria-live="polite"></p>
+                <button type="button" id="redimensionar-imagem">Aplicar redimensionamento</button>
+            </div>
+            <div id="resultado-redimensionamento" aria-live="polite"></div>
+        </section>
 
-            <button type="button" id="limpar-corte">
-                Limpar seleção
-            </button>
+        <section class="painel-ferramenta" id="painel-cortar" hidden>
+            <div class="controles-compressao">
+                <h3>Cortar imagem</h3>
+                <p>Arraste diretamente sobre a imagem acima para selecionar a região. Depois, clique em aplicar corte.</p>
+                <p id="dimensoes-corte" aria-live="polite">Selecione uma região na imagem.</p>
+                <button type="button" id="limpar-corte">Limpar seleção</button>
+                <button type="button" id="aplicar-corte">Aplicar corte na imagem</button>
+            </div>
+            <div id="resultado-corte" aria-live="polite"></div>
+        </section>
 
-            <button type="button" id="aplicar-corte">
-                Cortar e preparar download
-            </button>
-        </div>
+        <section class="painel-ferramenta" id="painel-transformar" hidden>
+            <div class="controles-compressao">
+                <h3>Girar e espelhar</h3>
+                <p>As alterações são aplicadas à imagem central.</p>
+                <button type="button" data-rotacao="90">Girar 90° à direita</button>
+                <button type="button" data-rotacao="-90">Girar 90° à esquerda</button>
+                <button type="button" data-rotacao="180">Girar 180°</button>
+                <button type="button" data-espelho="horizontal">Espelhar horizontalmente</button>
+                <button type="button" data-espelho="vertical">Espelhar verticalmente</button>
+                <p id="resultado-transformacao" aria-live="polite"></p>
+            </div>
+        </section>
 
-        <div id="resultado-corte" aria-live="polite"></div>
+        <section class="painel-ferramenta" id="painel-filtros" hidden>
+            <div class="controles-compressao">
+                <h3>Filtros para redes sociais</h3>
+                <p>Escolha um efeito para aplicar à imagem atual.</p>
 
-        <button type="button" id="trocar-imagem">
-            Escolher outra imagem
-        </button>
+                <div class="grade-filtros">
+                    <button type="button" data-filtro-imagem="grayscale">Preto e branco</button>
+                    <button type="button" data-filtro-imagem="sepia">Sépia</button>
+                    <button type="button" data-filtro-imagem="saturate">Saturação</button>
+                    <button type="button" data-filtro-imagem="golden">Golden</button>
+                    <button type="button" data-filtro-imagem="cinematic">Cinemático</button>
+                    <button type="button" data-filtro-imagem="pastel">Pastel</button>
+                    <button type="button" data-filtro-imagem="vibrant">Vibrante</button>
+                    <button type="button" data-filtro-imagem="vintage">Vintage fosco</button>
+                </div>
 
+                <p id="resultado-filtros" aria-live="polite"></p>
+            </div>
+        </section>
 
+        <section class="painel-ferramenta" id="painel-ajustes" hidden>
+            <div class="controles-compressao">
+                <h3>Ajustes de imagem</h3>
+                <p>Experimente os controles e aplique o resultado quando estiver satisfeito.</p>
 
+                <label for="ajuste-brilho">Brilho: <strong id="valor-brilho">100%</strong></label>
+                <input type="range" id="ajuste-brilho" min="50" max="150" value="100" step="1">
+
+                <label for="ajuste-contraste">Contraste: <strong id="valor-contraste">100%</strong></label>
+                <input type="range" id="ajuste-contraste" min="50" max="150" value="100" step="1">
+
+                <label for="ajuste-saturacao">Saturação: <strong id="valor-saturacao">100%</strong></label>
+                <input type="range" id="ajuste-saturacao" min="0" max="200" value="100" step="1">
+
+                <label for="ajuste-temperatura">Temperatura: <strong id="valor-temperatura">0</strong></label>
+                <input type="range" id="ajuste-temperatura" min="-30" max="30" value="0" step="1">
+
+                <button type="button" id="aplicar-ajustes">Aplicar ajustes</button>
+                <button type="button" id="restaurar-ajustes">Restaurar controles</button>
+                <p id="resultado-ajustes" aria-live="polite"></p>
+                <a id="baixar-ajustes" class="botao-download-edicao" hidden>Baixar imagem ajustada</a>
+            </div>
+        </section>
+
+        <button type="button" id="trocar-imagem">Escolher outra imagem</button>
     `;
 
-    document.getElementById("previa-imagem").src = urlImagemAtual;
-
+    const previa = document.getElementById("previa-imagem");
+    previa.src = urlImagemTrabalho || urlImagemAtual;
     document.getElementById("nome-imagem").textContent = arquivo.name;
+    document.getElementById("tamanho-imagem").textContent = formatarTamanho(arquivo.size);
+    document.getElementById("dimensoes-imagem").textContent = `${larguraOriginal} × ${alturaOriginal} pixels`;
 
-    document.getElementById("tamanho-imagem").textContent =
-        formatarTamanho(arquivo.size);
+    document.querySelectorAll(".aba-ferramenta").forEach((aba) => {
+        aba.addEventListener("click", () => {
+            document.querySelectorAll(".aba-ferramenta").forEach((outraAba) => {
+                outraAba.classList.toggle("ativa", outraAba === aba);
+            });
+            document.querySelectorAll(".painel-ferramenta").forEach((painel) => {
+                painel.hidden = painel.id !== aba.dataset.painel;
+            });
+            if (aba.dataset.painel !== "painel-cortar") {
+                const selecao = document.getElementById("selecao-corte");
+                if (selecao) selecao.style.display = "none";
+            }
+        });
+    });
 
-    document.getElementById("dimensoes-imagem").textContent =
-        `${larguraOriginal} × ${alturaOriginal} pixels`;
-
-    const controleQualidade =
-        document.getElementById("qualidade-imagem");
-
-    const valorQualidade =
-        document.getElementById("valor-qualidade");
-
+    const controleQualidade = document.getElementById("qualidade-imagem");
+    const valorQualidade = document.getElementById("valor-qualidade");
     controleQualidade.addEventListener("input", () => {
         valorQualidade.textContent = `${controleQualidade.value}%`;
     });
 
-    document.getElementById("trocar-imagem").addEventListener("click", () => {
-        campoArquivo.click();
-    });
+    document.getElementById("trocar-imagem").addEventListener("click", () => campoArquivo.click());
+    document.getElementById("processar-imagem").addEventListener("click", () => comprimirImagem(imagemTrabalho || imagem, arquivo));
+    document.getElementById("redimensionar-imagem").addEventListener("click", () => redimensionarImagem(imagemTrabalho || imagem, arquivo));
 
-    document.getElementById("processar-imagem").addEventListener("click", () => {
-        comprimirImagem(imagem, arquivo);
-    });
-
-    configurarProporcao(larguraOriginal, alturaOriginal);
-
-    document
-        .getElementById("redimensionar-imagem")
-	        .addEventListener("click", () => {
-            redimensionarImagem(imagem, arquivo);
+    document.querySelectorAll("[data-rotacao]").forEach((botao) => {
+        botao.addEventListener("click", () => {
+            aplicarTransformacao("rotacao", Number(botao.dataset.rotacao));
         });
+    });
 
-    configurarCorte(imagem, arquivo);
+    document.querySelectorAll("[data-espelho]").forEach((botao) => {
+        botao.addEventListener("click", () => {
+            aplicarTransformacao("espelho", botao.dataset.espelho);
+        });
+    });
+
+    document.querySelectorAll("[data-filtro-imagem]").forEach((botao) => {
+        botao.addEventListener("click", () => {
+            aplicarFiltroImagem(botao.dataset.filtroImagem);
+        });
+    });
+
+    configurarProporcao();
+    configurarCorte(arquivo);
+
+    const controlesAjustes = {
+        brilho: document.getElementById("ajuste-brilho"),
+        contraste: document.getElementById("ajuste-contraste"),
+        saturacao: document.getElementById("ajuste-saturacao"),
+        temperatura: document.getElementById("ajuste-temperatura")
+    };
+
+    const atualizarPreviaAjustes = () => {
+        const brilho = Number(controlesAjustes.brilho.value);
+        const contraste = Number(controlesAjustes.contraste.value);
+        const saturacao = Number(controlesAjustes.saturacao.value);
+        const temperatura = Number(controlesAjustes.temperatura.value);
+
+        document.getElementById("valor-brilho").textContent = `${brilho}%`;
+        document.getElementById("valor-contraste").textContent = `${contraste}%`;
+        document.getElementById("valor-saturacao").textContent = `${saturacao}%`;
+        document.getElementById("valor-temperatura").textContent =
+            temperatura > 0 ? `+${temperatura}` : String(temperatura);
+
+        const efeitoTemperatura = temperatura >= 0
+            ? `sepia(${temperatura / 100})`
+            : `hue-rotate(${temperatura * 0.35}deg)`;
+
+        previa.style.filter =
+            `brightness(${brilho}%) contrast(${contraste}%) ` +
+            `saturate(${saturacao}%) ${efeitoTemperatura}`;
+    };
+
+    document.getElementById("aplicar-ajustes").addEventListener("click", () => {
+        const base = imagemTrabalho || imagem;
+        const resultado = document.getElementById("resultado-ajustes");
+        const botao = document.getElementById("aplicar-ajustes");
+
+        if (!base || !base.naturalWidth || !base.naturalHeight) {
+            resultado.textContent = "Nenhuma imagem disponível para edição.";
+            return;
+        }
+
+        const brilho = Number(controlesAjustes.brilho.value);
+        const contraste = Number(controlesAjustes.contraste.value);
+        const saturacao = Number(controlesAjustes.saturacao.value);
+        const temperatura = Number(controlesAjustes.temperatura.value);
+
+        const efeitoTemperatura = temperatura >= 0
+            ? `sepia(${temperatura / 100})`
+            : `hue-rotate(${temperatura * 0.35}deg)`;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = base.naturalWidth;
+        canvas.height = base.naturalHeight;
+
+        const contexto = canvas.getContext("2d");
+        if (!contexto) {
+            resultado.textContent = "Não foi possível iniciar os ajustes.";
+            return;
+        }
+
+        contexto.drawImage(base, 0, 0);
+        botao.disabled = true;
+        resultado.textContent = "Aplicando ajustes aos pixels da imagem...";
+
+        try {
+            const imagemDados = contexto.getImageData(
+                0, 0, canvas.width, canvas.height
+            );
+            const pixels = imagemDados.data;
+            const fatorContraste = contraste / 100;
+            const fatorSaturacao = saturacao / 100;
+            const fatorBrilho = brilho / 100;
+            const deslocamentoTemperatura = temperatura * 0.8;
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                let r = pixels[i] * fatorBrilho;
+                let g = pixels[i + 1] * fatorBrilho;
+                let b = pixels[i + 2] * fatorBrilho;
+
+                r = (r - 128) * fatorContraste + 128;
+                g = (g - 128) * fatorContraste + 128;
+                b = (b - 128) * fatorContraste + 128;
+
+                const luminosidade = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+                r = luminosidade + (r - luminosidade) * fatorSaturacao;
+                g = luminosidade + (g - luminosidade) * fatorSaturacao;
+                b = luminosidade + (b - luminosidade) * fatorSaturacao;
+
+                r += deslocamentoTemperatura;
+                g += deslocamentoTemperatura * 0.12;
+                b -= deslocamentoTemperatura;
+
+                pixels[i] = Math.max(0, Math.min(255, Math.round(r)));
+                pixels[i + 1] = Math.max(0, Math.min(255, Math.round(g)));
+                pixels[i + 2] = Math.max(0, Math.min(255, Math.round(b)));
+            }
+
+            contexto.putImageData(imagemDados, 0, 0);
+        } catch (erro) {
+            botao.disabled = false;
+            resultado.textContent =
+                "Não foi possível processar esta imagem. Tente uma imagem menor.";
+            console.error("Erro ao aplicar ajustes:", erro);
+            return;
+        }
+
+        canvas.toBlob((blob) => {
+            botao.disabled = false;
+
+            if (!blob) {
+                resultado.textContent = "Não foi possível gerar a imagem ajustada.";
+                return;
+            }
+
+            previa.style.filter = "none";
+            atualizarImagemTrabalho(blob, "Ajustes aplicados", resultado);
+        }, "image/png");
+    });
+
+    Object.values(controlesAjustes).forEach((controle) => {
+        controle.addEventListener("input", atualizarPreviaAjustes);
+    });
+
+    document.getElementById("restaurar-ajustes").addEventListener("click", () => {
+        controlesAjustes.brilho.value = 100;
+        controlesAjustes.contraste.value = 100;
+        controlesAjustes.saturacao.value = 100;
+        controlesAjustes.temperatura.value = 0;
+        atualizarPreviaAjustes();
+        document.getElementById("resultado-ajustes").textContent =
+            "Controles restaurados. A imagem original desta edição foi preservada.";
+    });
 }
-
 
 // ===== MANTER PROPORÇÃO =====
 
 
  // ===== FERRAMENTA DE CORTE =====
 
-function configurarCorte(imagem, arquivo) {
-    const area = document.getElementById("area-corte");
-    const imagemCorte = document.getElementById("imagem-corte");
+function configurarCorte(arquivo) {
+    const area = document.getElementById("area-trabalho-imagem");
+    const imagemCorte = document.getElementById("previa-imagem");
     const selecao = document.getElementById("selecao-corte");
     const dimensoes = document.getElementById("dimensoes-corte");
     const botaoLimpar = document.getElementById("limpar-corte");
     const botaoAplicar = document.getElementById("aplicar-corte");
     const resultado = document.getElementById("resultado-corte");
-
-    imagemCorte.src = urlImagemAtual;
 
     let arrastando = false;
     let inicioX = 0;
@@ -338,12 +479,9 @@ function configurarCorte(imagem, arquivo) {
 
     function obterPosicao(evento) {
         const retangulo = imagemCorte.getBoundingClientRect();
-
         return {
             x: limitar(evento.clientX - retangulo.left, 0, retangulo.width),
-            y: limitar(evento.clientY - retangulo.top, 0, retangulo.height),
-            larguraExibida: retangulo.width,
-            alturaExibida: retangulo.height
+            y: limitar(evento.clientY - retangulo.top, 0, retangulo.height)
         };
     }
 
@@ -357,218 +495,128 @@ function configurarCorte(imagem, arquivo) {
         selecao.style.top = `${topo}px`;
         selecao.style.width = `${largura}px`;
         selecao.style.height = `${altura}px`;
-
-        regiao = {
-            x: esquerda,
-            y: topo,
-            largura,
-            altura,
-            larguraExibida: imagemCorte.clientWidth,
-            alturaExibida: imagemCorte.clientHeight
-        };
+        regiao = { x: esquerda, y: topo, largura, altura };
 
         if (largura > 2 && altura > 2) {
-            const larguraReal = Math.round(
-                largura * imagem.naturalWidth / imagemCorte.clientWidth
-            );
-
-            const alturaReal = Math.round(
-                altura * imagem.naturalHeight / imagemCorte.clientHeight
-            );
-
-            dimensoes.textContent =
-                `Área selecionada: ${larguraReal} × ${alturaReal} pixels`;
+            const larguraReal = Math.round(largura * imagemCorte.naturalWidth / imagemCorte.clientWidth);
+            const alturaReal = Math.round(altura * imagemCorte.naturalHeight / imagemCorte.clientHeight);
+            dimensoes.textContent = `Área selecionada: ${larguraReal} × ${alturaReal} pixels`;
         } else {
             dimensoes.textContent = "Selecione uma região maior.";
         }
     }
 
     area.addEventListener("pointerdown", (evento) => {
-        if (evento.target !== imagemCorte && evento.target !== selecao) {
-            return;
-        }
-
+        if (document.getElementById("painel-cortar").hidden) return;
+        if (evento.target !== imagemCorte && evento.target !== selecao) return;
         evento.preventDefault();
-
         const posicao = obterPosicao(evento);
-
         arrastando = true;
         inicioX = posicao.x;
         inicioY = posicao.y;
-
         regiao = null;
-        resultado.replaceChildren();
-
+        resultado.textContent = "";
         selecao.style.display = "block";
         desenharSelecao(inicioX, inicioY, inicioX, inicioY);
-
         area.setPointerCapture(evento.pointerId);
     });
 
     area.addEventListener("pointermove", (evento) => {
-        if (!arrastando) {
-            return;
-        }
-
+        if (!arrastando) return;
         const posicao = obterPosicao(evento);
-
-        desenharSelecao(
-            inicioX,
-            inicioY,
-            posicao.x,
-            posicao.y
-        );
+        desenharSelecao(inicioX, inicioY, posicao.x, posicao.y);
     });
 
-    function finalizarSelecao() {
-        arrastando = false;
-    }
-
+    function finalizarSelecao() { arrastando = false; }
     area.addEventListener("pointerup", finalizarSelecao);
     area.addEventListener("pointercancel", finalizarSelecao);
 
     botaoLimpar.addEventListener("click", () => {
         regiao = null;
         selecao.style.display = "none";
-        dimensoes.textContent = "Arraste para selecionar uma região.";
-        resultado.replaceChildren();
+        dimensoes.textContent = "Selecione uma região na imagem.";
+        resultado.textContent = "";
     });
 
     botaoAplicar.addEventListener("click", () => {
         if (!regiao || regiao.largura < 3 || regiao.altura < 3) {
-            resultado.textContent =
-                "Selecione uma área da imagem antes de cortar.";
+            resultado.textContent = "Selecione uma área da imagem antes de cortar.";
             return;
         }
 
-        const escalaX = imagem.naturalWidth / imagemCorte.clientWidth;
-        const escalaY = imagem.naturalHeight / imagemCorte.clientHeight;
+        const larguraExibida = imagemCorte.clientWidth;
+        const alturaExibida = imagemCorte.clientHeight;
+        const largura = Math.max(1, Math.round(regiao.largura * imagemCorte.naturalWidth / larguraExibida));
+        const altura = Math.max(1, Math.round(regiao.altura * imagemCorte.naturalHeight / alturaExibida));
+        const x = Math.round(regiao.x * imagemCorte.naturalWidth / larguraExibida);
+        const y = Math.round(regiao.y * imagemCorte.naturalHeight / alturaExibida);
 
-        const x = Math.round(regiao.x * escalaX);
-        const y = Math.round(regiao.y * escalaY);
-        const largura = Math.round(regiao.largura * escalaX);
-        const altura = Math.round(regiao.altura * escalaY);
+        if (largura * altura > PIXELS_MAXIMOS) {
+            resultado.textContent = "A região selecionada é grande demais para processar.";
+            return;
+        }
 
         const canvas = document.createElement("canvas");
         canvas.width = largura;
         canvas.height = altura;
-
         const contexto = canvas.getContext("2d");
-
         if (!contexto) {
             resultado.textContent = "Não foi possível iniciar o corte.";
             return;
         }
 
-        const formato = document.getElementById("formato-saida").value;
-        const qualidade =
-            Number(document.getElementById("qualidade-imagem").value) / 100;
-
-        if (formato === "image/jpeg") {
-            contexto.fillStyle = "#ffffff";
-            contexto.fillRect(0, 0, largura, altura);
-        }
-
-        contexto.drawImage(
-            imagem,
-            x, y, largura, altura,
-            0, 0, largura, altura
-        );
-
+        contexto.drawImage(imagemTrabalho || imagemCorte, x, y, largura, altura, 0, 0, largura, altura);
         botaoAplicar.disabled = true;
-        resultado.textContent = "Gerando recorte...";
+        resultado.textContent = "Aplicando corte à área de trabalho...";
 
         canvas.toBlob((blob) => {
             botaoAplicar.disabled = false;
-
-            if (!blob || blob.type !== formato) {
-                resultado.textContent =
-                    "Não foi possível gerar o recorte nesse formato.";
+            if (!blob) {
+                resultado.textContent = "Não foi possível aplicar o corte.";
                 return;
             }
-
-            if (urlCortadaAtual) {
-                URL.revokeObjectURL(urlCortadaAtual);
-            }
-
-            urlCortadaAtual = URL.createObjectURL(blob);
-
-            const extensoes = {
-                "image/jpeg": "jpg",
-                "image/png": "png",
-                "image/webp": "webp"
-            };
-
-            const nomeBase = arquivo.name.replace(/\.[^.]+$/, "");
-            const nome = `${nomeBase}-recortada.${extensoes[blob.type]}`;
-
-            resultado.innerHTML = `
-                <h3>Imagem recortada</h3>
-                <p>Dimensões: ${largura} × ${altura} pixels</p>
-                <p>Tamanho: ${formatarTamanho(blob.size)}</p>
-                <a id="baixar-corte" download="${nome}">Baixar imagem recortada</a>
-            `;
-
-            const link = document.getElementById("baixar-corte");
-            link.href = urlCortadaAtual;
-        }, formato, formato === "image/png" ? undefined : qualidade);
+            atualizarImagemTrabalho(blob, "Corte aplicado", resultado);
+            regiao = null;
+            selecao.style.display = "none";
+            dimensoes.textContent = `Imagem cortada: ${largura} × ${altura} pixels.`;
+        }, "image/png");
     });
 }
 
-function configurarProporcao(larguraOriginal, alturaOriginal) {
+function configurarProporcao() {
     const campoLargura = document.getElementById("largura-imagem");
     const campoAltura = document.getElementById("altura-imagem");
     const manterProporcao = document.getElementById("manter-proporcao");
-
     let ultimaDimensaoAlterada = "largura";
+
+    function dimensoesBase() {
+        const base = imagemTrabalho || document.getElementById("previa-imagem");
+        return { largura: base.naturalWidth, altura: base.naturalHeight };
+    }
 
     campoLargura.addEventListener("input", () => {
         ultimaDimensaoAlterada = "largura";
-
-        if (!manterProporcao.checked) {
-            return;
-        }
-
-        const largura = Number(campoLargura.value);
-
-        if (largura > 0 && Number.isFinite(largura)) {
-            campoAltura.value = Math.round(
-                largura * alturaOriginal / larguraOriginal
-            );
-        }
+        if (!manterProporcao.checked) return;
+        const { largura, altura } = dimensoesBase();
+        const valor = Number(campoLargura.value);
+        if (valor > 0 && Number.isFinite(valor)) campoAltura.value = Math.round(valor * altura / largura);
     });
 
     campoAltura.addEventListener("input", () => {
         ultimaDimensaoAlterada = "altura";
-
-        if (!manterProporcao.checked) {
-            return;
-        }
-
-        const altura = Number(campoAltura.value);
-
-        if (altura > 0 && Number.isFinite(altura)) {
-            campoLargura.value = Math.round(
-                altura * larguraOriginal / alturaOriginal
-            );
-        }
+        if (!manterProporcao.checked) return;
+        const { largura, altura } = dimensoesBase();
+        const valor = Number(campoAltura.value);
+        if (valor > 0 && Number.isFinite(valor)) campoLargura.value = Math.round(valor * largura / altura);
     });
 
     manterProporcao.addEventListener("change", () => {
-        if (!manterProporcao.checked) {
-            return;
-        }
-
+        if (!manterProporcao.checked) return;
+        const { largura, altura } = dimensoesBase();
         if (ultimaDimensaoAlterada === "largura") {
-            campoAltura.value = Math.round(
-                Number(campoLargura.value) *
-                alturaOriginal / larguraOriginal
-            );
+            campoAltura.value = Math.round(Number(campoLargura.value) * altura / largura);
         } else {
-            campoLargura.value = Math.round(
-                Number(campoAltura.value) *
-                larguraOriginal / alturaOriginal
-            );
+            campoLargura.value = Math.round(Number(campoAltura.value) * largura / altura);
         }
     });
 }
@@ -576,152 +624,334 @@ function configurarProporcao(larguraOriginal, alturaOriginal) {
 // ===== COMPRESSÃO E CONVERSÃO =====
 
 function comprimirImagem(imagem, arquivo) {
+    const base = imagemTrabalho || imagem;
     const formato = document.getElementById("formato-saida").value;
-    const qualidade =
-        Number(document.getElementById("qualidade-imagem").value) / 100;
-
+    const qualidade = Number(document.getElementById("qualidade-imagem").value) / 100;
     const resultado = document.getElementById("resultado-compressao");
     const botao = document.getElementById("processar-imagem");
 
     botao.disabled = true;
-    resultado.textContent = "Processando imagem...";
-
+    resultado.textContent = "Gerando arquivo final da imagem editada...";
     const canvas = document.createElement("canvas");
     const contexto = canvas.getContext("2d");
-
     if (!contexto) {
         resultado.textContent = "Não foi possível iniciar o processamento.";
         botao.disabled = false;
         return;
     }
 
-    canvas.width = imagem.naturalWidth;
-    canvas.height = imagem.naturalHeight;
-
+    canvas.width = base.naturalWidth;
+    canvas.height = base.naturalHeight;
     prepararFundo(contexto, formato, canvas.width, canvas.height);
-    contexto.drawImage(imagem, 0, 0);
+    contexto.drawImage(base, 0, 0);
 
     canvas.toBlob((blob) => {
         botao.disabled = false;
-
         if (!blob) {
             resultado.textContent = "Não foi possível gerar o arquivo final.";
             return;
         }
-
         if (blob.type !== formato) {
-            resultado.textContent =
-                "O navegador não conseguiu gerar esse formato. " +
-                "Tente JPEG ou WebP.";
+            resultado.textContent = "O navegador não conseguiu gerar esse formato. Tente JPEG ou WebP.";
             return;
         }
-
         liberarUrl("compressao");
-
         urlResultadoAtual = URL.createObjectURL(blob);
-
-        mostrarResultado(
-            resultado,
-            arquivo,
-            blob,
-            urlResultadoAtual,
-            "processada"
-        );
+        mostrarResultado(resultado, arquivo, blob, urlResultadoAtual, "editada");
     }, formato, formato === "image/png" ? undefined : qualidade);
 }
 
 // ===== REDIMENSIONAMENTO =====
 
 function redimensionarImagem(imagem, arquivo) {
+    const base = imagemTrabalho || imagem;
     const campoLargura = document.getElementById("largura-imagem");
     const campoAltura = document.getElementById("altura-imagem");
-    const formato = document.getElementById("formato-saida").value;
-    const qualidade =
-        Number(document.getElementById("qualidade-imagem").value) / 100;
-
-    const resultado =
-        document.getElementById("resultado-redimensionamento");
-
-    const botao =
-        document.getElementById("redimensionar-imagem");
-
+    const resultado = document.getElementById("resultado-redimensionamento");
+    const botao = document.getElementById("redimensionar-imagem");
     const largura = Number(campoLargura.value);
     const altura = Number(campoAltura.value);
 
-    if (
-        !Number.isInteger(largura) ||
-        !Number.isInteger(altura) ||
-        largura < 1 ||
-        altura < 1 ||
-        largura > DIMENSAO_MAXIMA ||
-        altura > DIMENSAO_MAXIMA
-    ) {
-        resultado.textContent =
-            "Informe largura e altura inteiras entre 1 e " +
-            `${DIMENSAO_MAXIMA} pixels.`;
+    if (!Number.isInteger(largura) || !Number.isInteger(altura) || largura < 1 || altura < 1 || largura > DIMENSAO_MAXIMA || altura > DIMENSAO_MAXIMA) {
+        resultado.textContent = `Informe largura e altura inteiras entre 1 e ${DIMENSAO_MAXIMA} pixels.`;
         return;
     }
-
     if (largura * altura > PIXELS_MAXIMOS) {
-        resultado.textContent =
-            "Essa dimensão é muito grande para o processamento. " +
-            "Reduza a largura ou a altura.";
+        resultado.textContent = "Essas dimensões são grandes demais para o processamento. Reduza a largura ou a altura.";
+        return;
+    }
+    if (largura === base.naturalWidth && altura === base.naturalHeight) {
+        resultado.textContent = "A imagem já possui essas dimensões.";
         return;
     }
 
     botao.disabled = true;
-    resultado.textContent = "Redimensionando imagem...";
-
+    resultado.textContent = "Aplicando redimensionamento à área de trabalho...";
     const canvas = document.createElement("canvas");
+    canvas.width = largura;
+    canvas.height = altura;
     const contexto = canvas.getContext("2d");
-
     if (!contexto) {
-        resultado.textContent =
-            "Não foi possível iniciar o redimensionamento.";
+        resultado.textContent = "Não foi possível iniciar o redimensionamento.";
         botao.disabled = false;
         return;
     }
 
+    contexto.drawImage(base, 0, 0, largura, altura);
+    canvas.toBlob((blob) => {
+        botao.disabled = false;
+        if (!blob) {
+            resultado.textContent = "Não foi possível redimensionar a imagem.";
+            return;
+        }
+        atualizarImagemTrabalho(blob, `Redimensionamento aplicado: ${largura} × ${altura} pixels`, resultado);
+    }, "image/png");
+}
+
+// Atualiza a imagem central após corte ou redimensionamento.
+function atualizarImagemTrabalho(blob, mensagem, resultado) {
+    const novaUrl = URL.createObjectURL(blob);
+    const novaImagem = new Image();
+
+    novaImagem.onload = () => {
+        const urlAnterior = urlImagemTrabalho;
+        imagemTrabalho = novaImagem;
+        urlImagemTrabalho = novaUrl;
+
+        const previa = document.getElementById("previa-imagem");
+        previa.src = novaUrl;
+        document.getElementById("dimensoes-imagem").textContent =
+            `${novaImagem.naturalWidth} × ${novaImagem.naturalHeight} pixels`;
+        document.getElementById("largura-imagem").value = novaImagem.naturalWidth;
+        document.getElementById("altura-imagem").value = novaImagem.naturalHeight;
+
+        const selecao = document.getElementById("selecao-corte");
+        if (selecao) selecao.style.display = "none";
+
+        if (urlAnterior && urlAnterior !== urlImagemAtual) {
+            URL.revokeObjectURL(urlAnterior);
+        }
+
+        if (resultado) {
+            resultado.replaceChildren();
+
+            const texto = document.createElement("p");
+            texto.textContent =
+                `${mensagem}. A imagem atualizada está visível na área de trabalho.`;
+            resultado.appendChild(texto);
+
+            const link = document.createElement("a");
+            const urlDownload = URL.createObjectURL(blob);
+            const extensoes = {
+                "image/jpeg": "jpg",
+                "image/png": "png",
+                "image/webp": "webp"
+            };
+            const extensao = extensoes[blob.type] || "png";
+
+            if (resultado.dataset.urlDownload) {
+                URL.revokeObjectURL(resultado.dataset.urlDownload);
+            }
+
+            resultado.dataset.urlDownload = urlDownload;
+            link.href = urlDownload;
+            link.download = `imagelab-editada.${extensao}`;
+            link.textContent = "Baixar imagem editada";
+            link.className = "botao-download-edicao";
+            if (resultado.id !== "resultado-ajustes") {
+                resultado.appendChild(link);
+            }
+
+            if (resultado.id === "resultado-ajustes") {
+                const baixarAjustes = document.getElementById("baixar-ajustes");
+
+                if (baixarAjustes) {
+                    if (baixarAjustes.dataset.urlDownload) {
+                        URL.revokeObjectURL(baixarAjustes.dataset.urlDownload);
+                    }
+
+                    const urlAjustes = URL.createObjectURL(blob);
+                    baixarAjustes.href = urlAjustes;
+                    baixarAjustes.download = `imagelab-ajustada.${extensao}`;
+                    baixarAjustes.dataset.urlDownload = urlAjustes;
+                    baixarAjustes.hidden = false;
+                }
+            }
+        }
+    };
+
+    novaImagem.onerror = () => {
+        URL.revokeObjectURL(novaUrl);
+        if (resultado) {
+            resultado.textContent =
+                "A edição foi gerada, mas não foi possível atualizar a pré-visualização.";
+        }
+    };
+
+    novaImagem.src = novaUrl;
+}
+
+// ===== ROTAÇÃO E ESPELHAMENTO =====
+
+function aplicarTransformacao(tipo, valor) {
+    const base = imagemTrabalho || document.getElementById("previa-imagem");
+    const resultado = document.getElementById("resultado-transformacao");
+
+    if (!base || !base.naturalWidth || !base.naturalHeight) {
+        resultado.textContent = "Nenhuma imagem disponível para edição.";
+        return;
+    }
+
+    const larguraOriginal = base.naturalWidth;
+    const alturaOriginal = base.naturalHeight;
+    const angulo = tipo === "rotacao" ? Number(valor) : 0;
+    const giraDeLado = Math.abs(angulo) % 180 === 90;
+    const largura = giraDeLado ? alturaOriginal : larguraOriginal;
+    const altura = giraDeLado ? larguraOriginal : alturaOriginal;
+
+    if (largura * altura > PIXELS_MAXIMOS) {
+        resultado.textContent = "A imagem é grande demais para essa transformação.";
+        return;
+    }
+
+    const canvas = document.createElement("canvas");
     canvas.width = largura;
     canvas.height = altura;
 
-    prepararFundo(contexto, formato, largura, altura);
+    const contexto = canvas.getContext("2d");
 
-    contexto.drawImage(imagem, 0, 0, largura, altura);
+    if (!contexto) {
+        resultado.textContent = "Não foi possível iniciar a transformação.";
+        return;
+    }
+
+    contexto.translate(largura / 2, altura / 2);
+
+    if (tipo === "rotacao") {
+        contexto.rotate(angulo * Math.PI / 180);
+    } else if (valor === "horizontal") {
+        contexto.scale(-1, 1);
+    } else if (valor === "vertical") {
+        contexto.scale(1, -1);
+    }
+
+    contexto.drawImage(
+        base,
+        -larguraOriginal / 2,
+        -alturaOriginal / 2
+    );
+
+    resultado.textContent = "Aplicando transformação...";
 
     canvas.toBlob((blob) => {
-        botao.disabled = false;
-
         if (!blob) {
-            resultado.textContent =
-                "Não foi possível gerar a imagem redimensionada.";
+            resultado.textContent = "Não foi possível aplicar a transformação.";
             return;
         }
 
-        if (blob.type !== formato) {
-            resultado.textContent =
-                "O navegador não conseguiu gerar esse formato. " +
-                "Tente JPEG ou WebP.";
+        const mensagem = tipo === "rotacao"
+            ? `Rotação de ${valor}° aplicada`
+            : valor === "horizontal"
+                ? "Espelhamento horizontal aplicado"
+                : "Espelhamento vertical aplicado";
+
+        atualizarImagemTrabalho(blob, mensagem, resultado);
+    }, "image/png");
+}
+
+// ===== FILTROS PARA REDES SOCIAIS =====
+
+function aplicarFiltroImagem(nomeFiltro) {
+    const resultado = document.getElementById("resultado-filtros");
+    const baseAtual = imagemTrabalho || document.getElementById("previa-imagem");
+
+    if (!baseAtual || !baseAtual.naturalWidth || !baseAtual.naturalHeight) {
+        resultado.textContent = "Nenhuma imagem disponível para edição.";
+        return;
+    }
+
+    // A base fica estável enquanto o usuário experimenta filtros.
+    // Um novo filtro substitui o anterior, em vez de acumular efeitos.
+    if (!window.imagemBaseFiltros ||
+        window.imagemBaseFiltros.width !== baseAtual.naturalWidth ||
+        window.imagemBaseFiltros.height !== baseAtual.naturalHeight) {
+        const baseCanvas = document.createElement("canvas");
+        baseCanvas.width = baseAtual.naturalWidth;
+        baseCanvas.height = baseAtual.naturalHeight;
+        const baseContexto = baseCanvas.getContext("2d");
+
+        if (!baseContexto) {
+            resultado.textContent = "Não foi possível preparar a imagem.";
             return;
         }
 
-        liberarUrl("redimensionamento");
+        baseContexto.drawImage(baseAtual, 0, 0);
+        window.imagemBaseFiltros = baseCanvas;
+    }
 
-        urlRedimensionadaAtual = URL.createObjectURL(blob);
+    const filtros = {
+        grayscale: {
+            css: "grayscale(1)",
+            nome: "Preto e branco"
+        },
+        sepia: {
+            css: "sepia(0.42) saturate(0.92) contrast(1.02)",
+            nome: "Sépia"
+        },
+        saturate: {
+            css: "saturate(1.15)",
+            nome: "Saturação suave"
+        },
+        golden: {
+            css: "sepia(0.16) saturate(1.08) brightness(1.015)",
+            nome: "Golden"
+        },
+        cinematic: {
+            css: "contrast(1.08) saturate(1.06)",
+            nome: "Cinemático"
+        },
+        pastel: {
+            css: "saturate(0.88) brightness(1.025) contrast(0.94)",
+            nome: "Pastel"
+        },
+        vibrant: {
+            css: "saturate(1.22) contrast(1.035)",
+            nome: "Vibrante"
+        },
+        vintage: {
+            css: "sepia(0.18) saturate(0.90) contrast(0.94) brightness(1.015)",
+            nome: "Vintage fosco"
+        }
+    };
 
-        mostrarResultado(
-            resultado,
-            arquivo,
-            blob,
-            urlRedimensionadaAtual,
-            "redimensionada"
-        );
+    const filtro = filtros[nomeFiltro];
+    if (!filtro) {
+        resultado.textContent = "Filtro não reconhecido.";
+        return;
+    }
 
-        resultado.insertAdjacentHTML(
-            "afterbegin",
-            `<p><strong>Novas dimensões:</strong> ${largura} × ${altura} pixels</p>`
-        );
-    }, formato, formato === "image/png" ? undefined : qualidade);
+    const canvas = document.createElement("canvas");
+    canvas.width = window.imagemBaseFiltros.width;
+    canvas.height = window.imagemBaseFiltros.height;
+
+    const contexto = canvas.getContext("2d");
+    if (!contexto) {
+        resultado.textContent = "Não foi possível iniciar o filtro.";
+        return;
+    }
+
+    contexto.filter = filtro.css;
+    contexto.drawImage(window.imagemBaseFiltros, 0, 0);
+    resultado.textContent = `Aplicando filtro ${filtro.nome}...`;
+
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            resultado.textContent = "Não foi possível gerar a imagem filtrada.";
+            return;
+        }
+
+        atualizarImagemTrabalho(blob, `Filtro ${filtro.nome} aplicado`, resultado);
+    }, "image/png");
 }
 
 // ===== FUNDO PARA FORMATOS SEM TRANSPARÊNCIA =====
@@ -774,7 +1004,8 @@ function mostrarResultado(resultado, arquivo, blob, url, sufixo) {
 
         <p>${mensagem}</p>
 
-        <a href="${url}" download="${nomeDownload}">
+        <a class="botao-download-edicao"
+           href="${url}" download="${nomeDownload}">
             Baixar imagem ${sufixo}
         </a>
     `;
@@ -814,11 +1045,15 @@ function liberarResultadoAnterior() {
 }
 
 window.addEventListener("pagehide", () => {
+    if (urlImagemTrabalho && urlImagemTrabalho !== urlImagemAtual) {
+        URL.revokeObjectURL(urlImagemTrabalho);
+    }
     if (urlImagemAtual) {
         URL.revokeObjectURL(urlImagemAtual);
         urlImagemAtual = null;
     }
-
+    urlImagemTrabalho = null;
     liberarResultadoAnterior();
     imagemAtual = null;
+    imagemTrabalho = null;
 });

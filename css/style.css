@@ -512,3 +512,126 @@ footer {
 #resultado-corte a:hover {
     background: var(--cor-principal-hover);
 }
+
+/* ===== NAVEGAÇÃO DAS FERRAMENTAS ===== */
+
+.navegacao-ferramentas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 24px auto 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.aba-ferramenta {
+    padding: 11px 16px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 9px;
+    background: var(--cor-superficie);
+    color: var(--cor-texto);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.aba-ferramenta:hover {
+    background: var(--cor-destaque);
+}
+
+.aba-ferramenta.ativa {
+    border-color: var(--cor-principal);
+    background: var(--cor-principal);
+    color: #ffffff;
+}
+
+.painel-ferramenta[hidden] {
+    display: none;
+}
+
+.painel-ferramenta {
+    width: 100%;
+    animation: aparecer-painel 0.18s ease-out;
+}
+
+@keyframes aparecer-painel {
+    from {
+        opacity: 0.6;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 480px) {
+    .navegacao-ferramentas {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .aba-ferramenta {
+        padding: 10px 6px;
+        font-size: 0.85rem;
+    }
+}
+
+/* ===== FILTROS PARA REDES SOCIAIS ===== */
+.grade-filtros {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 18px 0;
+}
+
+.grade-filtros button {
+    min-height: 48px;
+    padding: 12px;
+}
+
+@media (min-width: 700px) {
+    .grade-filtros {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* ===== DOWNLOAD DAS IMAGENS EDITADAS ===== */
+.botao-download-edicao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 13px 22px;
+    border: 0;
+    border-radius: 10px;
+    background: #176b50;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(23, 107, 80, 0.18);
+    transition: background 0.2s ease, transform 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+.botao-download-edicao:hover {
+    background: #10543e;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(23, 107, 80, 0.25);
+}
+
+.botao-download-edicao:focus-visible {
+    outline: 3px solid #8ac9ad;
+    outline-offset: 3px;
+}
+
+.botao-download-edicao[hidden] {
+    display: none;
+}

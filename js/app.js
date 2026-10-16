@@ -18,6 +18,8 @@ const FORMATOS_PERMITIDOS = [
 
 let imagemAtual = null;
 let imagemTrabalho = null;
+let imagemAnterior = null;
+let urlImagemAnterior = null;
 let urlImagemAtual = null;
 let urlImagemTrabalho = null;
 let urlResultadoAtual = null;
@@ -100,6 +102,17 @@ function carregarImagem(arquivo) {
             return;
         }
 
+        if (
+            urlImagemAnterior &&
+            urlImagemAnterior !== urlImagemAtual &&
+            urlImagemAnterior !== urlImagemTrabalho
+        ) {
+            URL.revokeObjectURL(urlImagemAnterior);
+        }
+
+        imagemAnterior = null;
+        urlImagemAnterior = null;
+
         if (urlImagemTrabalho && urlImagemTrabalho !== urlImagemAtual) {
             URL.revokeObjectURL(urlImagemTrabalho);
         }
@@ -152,6 +165,15 @@ function mostrarPrevia(imagem, arquivo) {
                 id="selecao-corte"
                 style="position:absolute; display:none; border:2px solid #176b50; background:rgba(23,107,80,0.20); box-sizing:border-box; pointer-events:none;"
             ></div>
+        </div>
+
+        <div class="acoes-historico">
+            <button type="button" id="desfazer-edicao" disabled>
+                Desfazer última edição
+            </button>
+            <span id="estado-historico" aria-live="polite">
+                Nenhuma edição para desfazer.
+            </span>
         </div>
 
         <div class="informacoes-imagem">
@@ -298,6 +320,9 @@ function mostrarPrevia(imagem, arquivo) {
     });
 
     document.getElementById("trocar-imagem").addEventListener("click", () => campoArquivo.click());
+
+    document.getElementById("desfazer-edicao").addEventListener("click", desfazerUltimaEdicao);
+
     document.getElementById("processar-imagem").addEventListener("click", () => comprimirImagem(imagemTrabalho || imagem, arquivo));
     document.getElementById("redimensionar-imagem").addEventListener("click", () => redimensionarImagem(imagemTrabalho || imagem, arquivo));
 
@@ -714,9 +739,20 @@ function atualizarImagemTrabalho(blob, mensagem, resultado) {
     const novaImagem = new Image();
 
     novaImagem.onload = () => {
+        const urlHistoricoAntigo = urlImagemAnterior;
         const urlAnterior = urlImagemTrabalho;
+
+        imagemAnterior = imagemTrabalho;
+        urlImagemAnterior = urlAnterior;
+
         imagemTrabalho = novaImagem;
         urlImagemTrabalho = novaUrl;
+
+        const botaoDesfazer = document.getElementById("desfazer-edicao");
+        const estadoHistorico = document.getElementById("estado-historico");
+
+        if (botaoDesfazer) botaoDesfazer.disabled = false;
+        if (estadoHistorico) estadoHistorico.textContent = "Uma edição pode ser desfeita.";
 
         const previa = document.getElementById("previa-imagem");
         previa.src = novaUrl;
@@ -728,8 +764,12 @@ function atualizarImagemTrabalho(blob, mensagem, resultado) {
         const selecao = document.getElementById("selecao-corte");
         if (selecao) selecao.style.display = "none";
 
-        if (urlAnterior && urlAnterior !== urlImagemAtual) {
-            URL.revokeObjectURL(urlAnterior);
+        if (
+            urlHistoricoAntigo &&
+            urlHistoricoAntigo !== urlImagemAtual &&
+            urlHistoricoAntigo !== urlAnterior
+        ) {
+            URL.revokeObjectURL(urlHistoricoAntigo);
         }
 
         if (resultado) {
@@ -789,6 +829,46 @@ function atualizarImagemTrabalho(blob, mensagem, resultado) {
     };
 
     novaImagem.src = novaUrl;
+}
+
+// Restaura a imagem anterior à última edição aplicada.
+function desfazerUltimaEdicao() {
+    if (!imagemAnterior || !urlImagemAnterior) {
+        return;
+    }
+
+    const urlAtual = urlImagemTrabalho;
+
+    imagemTrabalho = imagemAnterior;
+    urlImagemTrabalho = urlImagemAnterior;
+    imagemAnterior = null;
+    urlImagemAnterior = null;
+
+    const previa = document.getElementById("previa-imagem");
+    previa.src = urlImagemTrabalho;
+    previa.style.filter = "none";
+
+    document.getElementById("dimensoes-imagem").textContent =
+        `${imagemTrabalho.naturalWidth} × ${imagemTrabalho.naturalHeight} pixels`;
+    document.getElementById("largura-imagem").value =
+        imagemTrabalho.naturalWidth;
+    document.getElementById("altura-imagem").value =
+        imagemTrabalho.naturalHeight;
+
+    const selecao = document.getElementById("selecao-corte");
+    if (selecao) selecao.style.display = "none";
+
+    const botaoDesfazer = document.getElementById("desfazer-edicao");
+    const estadoHistorico = document.getElementById("estado-historico");
+
+    if (botaoDesfazer) botaoDesfazer.disabled = true;
+    if (estadoHistorico) estadoHistorico.textContent = "Última edição desfeita.";
+
+    window.imagemBaseFiltros = null;
+
+    if (urlAtual && urlAtual !== urlImagemAtual && urlAtual !== urlImagemTrabalho) {
+        URL.revokeObjectURL(urlAtual);
+    }
 }
 
 // ===== ROTAÇÃO E ESPELHAMENTO =====
